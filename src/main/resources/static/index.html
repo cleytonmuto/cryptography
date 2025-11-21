@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptography Tools - OpenSSL Based</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="file"],
+        input[type="text"],
+        input[type="password"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 120px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
+        }
+
+        .key-display {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .button-group .btn {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Cryptography Tools</h1>
+        <p class="subtitle">OpenSSL-based encryption and decryption services</p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('keypair')">Generate Key Pair</button>
+            <button class="tab" onclick="showTab('rsa-encrypt')">RSA Encrypt</button>
+            <button class="tab" onclick="showTab('rsa-decrypt')">RSA Decrypt</button>
+            <button class="tab" onclick="showTab('aes-encrypt')">AES Encrypt</button>
+            <button class="tab" onclick="showTab('aes-decrypt')">AES Decrypt</button>
+            <button class="tab" onclick="showTab('sign')">Sign File</button>
+            <button class="tab" onclick="showTab('verify')">Verify Signature</button>
+            <button class="tab" onclick="showTab('hash')">File Hash</button>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <!-- Generate Key Pair Tab -->
+        <div id="keypair" class="tab-content active">
+            <h2>Generate RSA Key Pair</h2>
+            <p style="color: #666; margin-bottom: 20px;">Generate a new RSA public/private key pair for encryption and signing.</p>
+            <button class="btn" onclick="generateKeyPair()">Generate Key Pair</button>
+            <div id="keypair-result" style="display: none;">
+                <div class="form-group">
+                    <label>Public Key:</label>
+                    <textarea id="public-key" readonly></textarea>
+                    <button class="btn btn-secondary" onclick="copyToClipboard('public-key')" style="margin-top: 10px;">Copy Public Key</button>
+                </div>
+                <div class="form-group">
+                    <label>Private Key:</label>
+                    <textarea id="private-key" readonly></textarea>
+                    <button class="btn btn-secondary" onclick="copyToClipboard('private-key')" style="margin-top: 10px;">Copy Private Key</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RSA Encrypt Tab -->
+        <div id="rsa-encrypt" class="tab-content">
+            <h2>RSA File Encryption</h2>
+            <p style="color: #666; margin-bottom: 20px;">Encrypt a file using RSA public key encryption.</p>
+            <form id="rsa-encrypt-form" onsubmit="encryptRSA(event)">
+                <div class="form-group">
+                    <label>Select File:</label>
+                    <input type="file" id="rsa-encrypt-file" required>
+                    <div id="rsa-encrypt-file-info" class="file-info" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Public Key:</label>
+                    <textarea id="rsa-encrypt-key" placeholder="Paste your public key here" required></textarea>
+                </div>
+                <button type="submit" class="btn">Encrypt File</button>
+            </form>
+        </div>
+
+        <!-- RSA Decrypt Tab -->
+        <div id="rsa-decrypt" class="tab-content">
+            <h2>RSA File Decryption</h2>
+            <p style="color: #666; margin-bottom: 20px;">Decrypt a file using RSA private key decryption.</p>
+            <form id="rsa-decrypt-form" onsubmit="decryptRSA(event)">
+                <div class="form-group">
+                    <label>Select Encrypted File:</label>
+                    <input type="file" id="rsa-decrypt-file" required>
+                    <div id="rsa-decrypt-file-info" class="file-info" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Private Key:</label>
+                    <textarea id="rsa-decrypt-key" placeholder="Paste your private key here" required></textarea>
+                </div>
+                <button type="submit" class="btn">Decrypt File</button>
+            </form>
+        </div>
+
+        <!-- AES Encrypt Tab -->
+        <div id="aes-encrypt" class="tab-content">
+            <h2>AES File Encryption</h2>
+            <p style="color: #666; margin-bottom: 20px;">Encrypt a file using AES-256 with password.</p>
+            <form id="aes-encrypt-form" onsubmit="encryptAES(event)">
+                <div class="form-group">
+                    <label>Select File:</label>
+                    <input type="file" id="aes-encrypt-file" required>
+                    <div id="aes-encrypt-file-info" class="file-info" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="aes-encrypt-password" placeholder="Enter encryption password" required>
+                </div>
+                <button type="submit" class="btn">Encrypt File</button>
+            </form>
+        </div>
+
+        <!-- AES Decrypt Tab -->
+        <div id="aes-decrypt" class="tab-content">
+            <h2>AES File Decryption</h2>
+            <p style="color: #666; margin-bottom: 20px;">Decrypt a file using AES-256 with password.</p>
+            <form id="aes-decrypt-form" onsubmit="decryptAES(event)">
+                <div class="form-group">
+                    <label>Select Encrypted File:</label>
+                    <input type="file" id="aes-decrypt-file" required>
+                    <div id="aes-decrypt-file-info" class="file-info" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="aes-decrypt-password" placeholder="Enter decryption password" required>
+                </div>
+                <button type="submit" class="btn">Decrypt File</button>
+            </form>
+        </div>
+
+        <!-- Sign Tab -->
+        <div id="sign" class="tab-content">
+            <h2>Sign File with RSA</h2>
+            <p style="color: #666; margin-bottom: 20px;">Create a digital signature for a file using RSA private key.</p>
+            <form id="sign-form" onsubmit="signFile(event)">
+                <div class="form-group">
+                    <label>Select File:</label>
+                    <input type="file" id="sign-file" required>
+                    <div id="sign-file-info" class="file-info" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Private Key:</label>
+                    <textarea id="sign-key" placeholder="Paste your private key here" required></textarea>
+                </div>
+                <button type="submit" class="btn">Sign File</button>
+            </form>
+        </div>
+
+        <!-- Verify Tab -->
+        <div id="verify" class="tab-content">
+            <h2>Verify File Signature</h2>
+            <p style="color: #666; margin-bottom: 20px;">Verify the digital signature of a file using RSA public key.</p>
+            <form id="verify-form" onsubmit="verifySignature(event)">
+                <div class="form-group">
+                    <label>Select Original File:</label>
+                    <input type="file" id="verify-file" required>
+                    <div id="verify-file-info" class="file-info" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Select Signature File:</label>
+                    <input type="file" id="verify-signature" required>
+                    <div id="verify-signature-info" class="file-info" style="display: none;"></div>
+                </div>
+                <div class="form-group">
+                    <label>Public Key:</label>
+                    <textarea id="verify-key" placeholder="Paste the public key here" required></textarea>
+                </div>
+                <button type="submit" class="btn">Verify Signature</button>
+            </form>
+        </div>
+
+        <!-- Hash Tab -->
+        <div id="hash" class="tab-content">
+            <h2>Generate File Hash</h2>
+            <p style="color: #666; margin-bottom: 20px;">Generate MD5 and SHA-256 hash values for file integrity verification.</p>
+            <form id="hash-form" onsubmit="generateHash(event)">
+                <div class="form-group">
+                    <label>Select File:</label>
+                    <input type="file" id="hash-file" required>
+                    <div id="hash-file-info" class="file-info" style="display: none;"></div>
+                </div>
+                <button type="submit" class="btn">Generate Hash</button>
+            </form>
+            <div id="hash-result" style="display: none; margin-top: 30px;">
+                <div class="form-group">
+                    <label>MD5 Hash:</label>
+                    <div class="key-display" id="md5-hash"></div>
+                    <button class="btn btn-secondary" onclick="copyHashToClipboard('md5-hash')" style="margin-top: 10px;">Copy MD5 Hash</button>
+                </div>
+                <div class="form-group">
+                    <label>SHA-256 Hash:</label>
+                    <div class="key-display" id="sha256-hash"></div>
+                    <button class="btn btn-secondary" onclick="copyHashToClipboard('sha256-hash')" style="margin-top: 10px;">Copy SHA-256 Hash</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/crypto';
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert ${type} show`;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+            showAlert('Copied to clipboard!', 'success');
+        }
+
+        function generateKeyPair() {
+            fetch(`${API_BASE}/generate-keypair`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.publicKey && data.privateKey) {
+                    document.getElementById('public-key').value = data.publicKey;
+                    document.getElementById('private-key').value = data.privateKey;
+                    document.getElementById('keypair-result').style.display = 'block';
+                    showAlert('Key pair generated successfully!', 'success');
+                } else {
+                    showAlert(data.message || 'Error generating key pair', 'error');
+                }
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        function encryptRSA(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('rsa-encrypt-file');
+            const keyInput = document.getElementById('rsa-encrypt-key').value.trim();
+
+            if (!fileInput.files[0] || !keyInput) {
+                showAlert('Please select a file and provide a public key', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('publicKey', keyInput);
+
+            fetch(`${API_BASE}/encrypt/rsa`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Encryption failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileInput.files[0].name + '.encrypted';
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showAlert('File encrypted and downloaded successfully!', 'success');
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        function decryptRSA(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('rsa-decrypt-file');
+            const keyInput = document.getElementById('rsa-decrypt-key').value.trim();
+
+            if (!fileInput.files[0] || !keyInput) {
+                showAlert('Please select a file and provide a private key', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('privateKey', keyInput);
+
+            fetch(`${API_BASE}/decrypt/rsa`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Decryption failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const filename = fileInput.files[0].name.replace('.encrypted', '');
+                a.download = filename;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showAlert('File decrypted and downloaded successfully!', 'success');
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        function encryptAES(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('aes-encrypt-file');
+            const passwordInput = document.getElementById('aes-encrypt-password').value;
+
+            if (!fileInput.files[0] || !passwordInput) {
+                showAlert('Please select a file and provide a password', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('password', passwordInput);
+
+            fetch(`${API_BASE}/encrypt/aes`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Encryption failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileInput.files[0].name + '.aes';
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showAlert('File encrypted and downloaded successfully!', 'success');
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        function decryptAES(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('aes-decrypt-file');
+            const passwordInput = document.getElementById('aes-decrypt-password').value;
+
+            if (!fileInput.files[0] || !passwordInput) {
+                showAlert('Please select a file and provide a password', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('password', passwordInput);
+
+            fetch(`${API_BASE}/decrypt/aes`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Decryption failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const filename = fileInput.files[0].name.replace('.aes', '');
+                a.download = filename;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showAlert('File decrypted and downloaded successfully!', 'success');
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        function signFile(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('sign-file');
+            const keyInput = document.getElementById('sign-key').value.trim();
+
+            if (!fileInput.files[0] || !keyInput) {
+                showAlert('Please select a file and provide a private key', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('privateKey', keyInput);
+
+            fetch(`${API_BASE}/sign/rsa`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                }
+                throw new Error('Signing failed');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileInput.files[0].name + '.sig';
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showAlert('File signed and signature downloaded successfully!', 'success');
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        function verifySignature(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('verify-file');
+            const signatureInput = document.getElementById('verify-signature');
+            const keyInput = document.getElementById('verify-key').value.trim();
+
+            if (!fileInput.files[0] || !signatureInput.files[0] || !keyInput) {
+                showAlert('Please select both files and provide a public key', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('signature', signatureInput.files[0]);
+            formData.append('publicKey', keyInput);
+
+            fetch(`${API_BASE}/verify/rsa`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(message => {
+                const isValid = message.includes('valid');
+                showAlert(message, isValid ? 'success' : 'error');
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        function generateHash(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('hash-file');
+
+            if (!fileInput.files[0]) {
+                showAlert('Please select a file', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            fetch(`${API_BASE}/hash`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.md5Hash && data.sha256Hash) {
+                    document.getElementById('md5-hash').textContent = data.md5Hash;
+                    document.getElementById('sha256-hash').textContent = data.sha256Hash;
+                    document.getElementById('hash-result').style.display = 'block';
+                    showAlert('Hash generated successfully!', 'success');
+                } else {
+                    showAlert(data.message || 'Error generating hash', 'error');
+                }
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        function copyHashToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showAlert('Hash copied to clipboard!', 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showAlert('Hash copied to clipboard!', 'success');
+            });
+        }
+
+        // File info display
+        document.querySelectorAll('input[type="file"]').forEach(input => {
+            input.addEventListener('change', function() {
+                const fileInfo = this.parentElement.querySelector('.file-info');
+                if (this.files[0]) {
+                    const file = this.files[0];
+                    fileInfo.textContent = `File: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+                    fileInfo.style.display = 'block';
+                } else {
+                    fileInfo.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
