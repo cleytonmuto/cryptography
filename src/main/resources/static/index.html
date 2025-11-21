@@ -225,11 +225,16 @@
         <!-- Generate Key Pair Tab -->
         <div id="keypair" class="tab-content active">
             <h2>Generate RSA Key Pair</h2>
-            <p style="color: #666; margin-bottom: 20px;">Generate a new RSA public/private key pair in PEM format for encryption and signing.</p>
-            <div class="button-group" style="margin-bottom: 20px;">
+            <p style="color: #666; margin-bottom: 20px;">Generate a new RSA public/private key pair in PEM format for encryption and signing. Each generation creates unique, random keys.</p>
+            <div class="button-group" style="margin-bottom: 15px;">
                 <button class="btn" onclick="generateKeyPair('both')">Generate Both Keys</button>
                 <button class="btn btn-secondary" onclick="generateKeyPair('public')">Generate Public Key Only</button>
                 <button class="btn btn-secondary" onclick="generateKeyPair('private')">Generate Private Key Only</button>
+            </div>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button class="btn btn-secondary" onclick="resetKeyPair()" style="background: #6c757d; max-width: 300px;">
+                    🔄 Reset & Generate New Random Keys
+                </button>
             </div>
             <div id="keypair-info" class="alert" style="display: none;"></div>
         </div>
@@ -443,6 +448,21 @@
             .catch(error => {
                 showAlert('Error: ' + error.message, 'error');
             });
+        }
+
+        function resetKeyPair() {
+            // Clear any previous alerts or info
+            const infoDiv = document.getElementById('keypair-info');
+            if (infoDiv) {
+                infoDiv.style.display = 'none';
+                infoDiv.textContent = '';
+            }
+            
+            // Show confirmation message
+            showAlert('Generating new random key pair...', 'success');
+            
+            // Generate both keys (this creates completely new random keys)
+            generateKeyPair('both');
         }
 
         function encryptRSA(event) {
