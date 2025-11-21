@@ -218,6 +218,7 @@
             <button class="tab" onclick="showTab('sign')">Sign File</button>
             <button class="tab" onclick="showTab('verify')">Verify Signature</button>
             <button class="tab" onclick="showTab('hash')">File Hash</button>
+            <button class="tab" onclick="showTab('steganography')">Steganography</button>
         </div>
 
         <div id="alert" class="alert"></div>
@@ -375,6 +376,51 @@
                     <div class="key-display" id="sha256-hash"></div>
                     <button class="btn btn-secondary" onclick="copyHashToClipboard('sha256-hash')" style="margin-top: 10px;">Copy SHA-256 Hash</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Steganography Tab -->
+        <div id="steganography" class="tab-content">
+            <h2>Image Steganography</h2>
+            <p style="color: #666; margin-bottom: 20px;">Hide a small file inside a JPG image file. The file will be encrypted with a password before hiding.</p>
+            
+            <div style="margin-bottom: 30px;">
+                <h3 style="color: #333; margin-bottom: 15px;">Hide File in Image</h3>
+                <form id="hide-file-form" onsubmit="hideFileInImage(event)">
+                    <div class="form-group">
+                        <label>Select JPG Image (Cover Image):</label>
+                        <input type="file" id="stego-image" accept=".jpg,.jpeg" required>
+                        <div id="stego-image-info" class="file-info" style="display: none;"></div>
+                        <div id="stego-capacity-info" class="alert" style="display: none; margin-top: 10px;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Select File to Hide (Small file):</label>
+                        <input type="file" id="stego-file" required disabled>
+                        <div id="stego-file-info" class="file-info" style="display: none;"></div>
+                        <small style="color: #666; display: block; margin-top: 5px;">Please load a cover image first</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="stego-password" placeholder="Enter password to encrypt the hidden file" required>
+                    </div>
+                    <button type="submit" class="btn">Hide File in Image</button>
+                </form>
+            </div>
+
+            <div style="border-top: 2px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
+                <h3 style="color: #333; margin-bottom: 15px;">Extract File from Image</h3>
+                <form id="extract-file-form" onsubmit="extractFileFromImage(event)">
+                    <div class="form-group">
+                        <label>Select Steganography Image (JPG):</label>
+                        <input type="file" id="extract-image" accept=".jpg,.jpeg" required>
+                        <div id="extract-image-info" class="file-info" style="display: none;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Password:</label>
+                        <input type="password" id="extract-password" placeholder="Enter password to decrypt the hidden file" required>
+                    </div>
+                    <button type="submit" class="btn">Extract Hidden File</button>
+                </form>
             </div>
         </div>
     </div>
@@ -736,18 +782,235 @@
             });
         }
 
-        // File info display
-        document.querySelectorAll('input[type="file"]').forEach(input => {
-            input.addEventListener('change', function() {
-                const fileInfo = this.parentElement.querySelector('.file-info');
-                if (this.files[0]) {
-                    const file = this.files[0];
-                    fileInfo.textContent = `File: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
-                    fileInfo.style.display = 'block';
-                } else {
-                    fileInfo.style.display = 'none';
+        // Handle cover image loading
+        document.getElementById('stego-image').addEventListener('change', function() {
+            const imageInput = this;
+            const fileInput = document.getElementById('stego-file');
+            const capacityInfo = document.getElementById('stego-capacity-info');
+            const fileInfo = document.getElementById('stego-file-info');
+            
+            if (imageInput.files[0]) {
+                // Show image info
+                const imageFile = imageInput.files[0];
+                const imageInfo = imageFile.name + ' (' + (imageFile.size / 1024).toFixed(2) + ' KB)';
+                document.getElementById('stego-image-info').textContent = 'Image: ' + imageInfo;
+                document.getElementById('stego-image-info').style.display = 'block';
+                
+                // Calculate capacity
+                const formData = new FormData();
+                formData.append('image', imageFile);
+                
+                fetch('/api/steganography/capacity', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.maxFileSizeBytes > 0) {
+                        const maxSizeKB = (data.maxFileSizeBytes / 1024).toFixed(2);
+                        const maxSizeMB = (data.maxFileSizeBytes / (1024 * 1024)).toFixed(2);
+                        const sizeText = data.maxFileSizeBytes > 1024 * 1024 ? 
+                            maxSizeMB + ' MB' : maxSizeKB + ' KB';
+                        
+                        capacityInfo.innerHTML = '<strong>Maximum file size:</strong> ' + 
+                            data.maxFileSizeBytes.toLocaleString() + ' bytes (' + sizeText + ')<br>' +
+                            '<small>Image dimensions: ' + data.imageWidth + ' × ' + data.imageHeight + 
+                            ' pixels (' + data.totalPixels.toLocaleString() + ' total pixels)</small>';
+                        capacityInfo.className = 'alert success show';
+                        capacityInfo.style.display = 'block';
+                        
+                        // Enable file input
+                        fileInput.disabled = false;
+                        fileInput.parentElement.querySelector('small').textContent = 
+                            'Maximum file size: ' + sizeText;
+                    } else {
+                        capacityInfo.innerHTML = '<strong>Error:</strong> ' + (data.message || 'Unable to calculate capacity');
+                        capacityInfo.className = 'alert error show';
+                        capacityInfo.style.display = 'block';
+                        fileInput.disabled = true;
+                    }
+                })
+                .catch(error => {
+                    capacityInfo.innerHTML = '<strong>Error:</strong> ' + error.message;
+                    capacityInfo.className = 'alert error show';
+                    capacityInfo.style.display = 'block';
+                    fileInput.disabled = true;
+                });
+            } else {
+                // Reset if no image selected
+                capacityInfo.style.display = 'none';
+                fileInput.disabled = true;
+                fileInput.value = '';
+                fileInfo.style.display = 'none';
+                fileInput.parentElement.querySelector('small').textContent = 'Please load a cover image first';
+            }
+        });
+
+        function hideFileInImage(event) {
+            event.preventDefault();
+            const imageInput = document.getElementById('stego-image');
+            const fileInput = document.getElementById('stego-file');
+            const passwordInput = document.getElementById('stego-password').value;
+            const capacityInfo = document.getElementById('stego-capacity-info');
+
+            if (!imageInput.files[0] || !fileInput.files[0] || !passwordInput) {
+                showAlert('Please select both image and file, and provide a password', 'error');
+                return;
+            }
+
+            // Get maximum file size from capacity info
+            const maxSizeText = capacityInfo.textContent.match(/Maximum file size: ([\d,]+) bytes/);
+            if (!maxSizeText) {
+                showAlert('Please wait for capacity calculation to complete', 'error');
+                return;
+            }
+            
+            const maxFileSizeBytes = parseInt(maxSizeText[1].replace(/,/g, ''));
+            const fileSize = fileInput.files[0].size;
+            
+            if (fileSize > maxFileSizeBytes) {
+                const maxSizeKB = (maxFileSizeBytes / 1024).toFixed(2);
+                const maxSizeMB = (maxFileSizeBytes / (1024 * 1024)).toFixed(2);
+                const fileSizeKB = (fileSize / 1024).toFixed(2);
+                const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+                const maxSizeText = maxFileSizeBytes > 1024 * 1024 ? maxSizeMB + ' MB' : maxSizeKB + ' KB';
+                const fileSizeText = fileSize > 1024 * 1024 ? fileSizeMB + ' MB' : fileSizeKB + ' KB';
+                
+                showAlert('File is too large! File size: ' + fileSizeText + ', Maximum allowed: ' + maxSizeText, 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', imageInput.files[0]);
+            formData.append('file', fileInput.files[0]);
+            formData.append('password', passwordInput);
+
+            fetch('/api/steganography/hide', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
                 }
+                throw new Error('Failed to hide file in image');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const imageFilename = imageInput.files[0].name;
+                a.download = imageFilename.replace(/\.(jpg|jpeg)$/i, '_stego.jpg');
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showAlert('File hidden successfully! Image downloaded.', 'success');
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
             });
+        }
+
+        function extractFileFromImage(event) {
+            event.preventDefault();
+            const imageInput = document.getElementById('extract-image');
+            const passwordInput = document.getElementById('extract-password').value;
+
+            if (!imageInput.files[0] || !passwordInput) {
+                showAlert('Please select an image and provide the password', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', imageInput.files[0]);
+            formData.append('password', passwordInput);
+
+            let responseObj = null;
+            fetch('/api/steganography/extract', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                responseObj = response;
+                if (response.ok) {
+                    // Get filename from Content-Disposition header
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'extracted_file';
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                        if (filenameMatch) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+                    
+                    return response.blob().then(blob => ({ blob, filename }));
+                }
+                throw new Error('Failed to extract file. Wrong password or no file hidden in image.');
+            })
+            .then(({ blob, filename }) => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showAlert('File extracted successfully!', 'success');
+            })
+            .catch(error => {
+                showAlert('Error: ' + error.message, 'error');
+            });
+        }
+
+        // File info display with validation for stego-file
+        document.getElementById('stego-file').addEventListener('change', function() {
+            const fileInput = this;
+            const fileInfo = this.parentElement.querySelector('.file-info');
+            const capacityInfo = document.getElementById('stego-capacity-info');
+            
+            if (fileInput.files[0]) {
+                const file = fileInput.files[0];
+                const fileSize = file.size;
+                const fileSizeKB = (fileSize / 1024).toFixed(2);
+                const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+                const fileSizeText = fileSize > 1024 * 1024 ? fileSizeMB + ' MB' : fileSizeKB + ' KB';
+                
+                // Get maximum file size from capacity info
+                const maxSizeMatch = capacityInfo.textContent.match(/Maximum file size: ([\d,]+) bytes/);
+                if (maxSizeMatch) {
+                    const maxFileSizeBytes = parseInt(maxSizeMatch[1].replace(/,/g, ''));
+                    const maxSizeKB = (maxFileSizeBytes / 1024).toFixed(2);
+                    const maxSizeMB = (maxFileSizeBytes / (1024 * 1024)).toFixed(2);
+                    const maxSizeText = maxFileSizeBytes > 1024 * 1024 ? maxSizeMB + ' MB' : maxSizeKB + ' KB';
+                    
+                    if (fileSize > maxFileSizeBytes) {
+                        fileInfo.innerHTML = `<span style="color: #d32f2f;">File: ${file.name} (${fileSizeText}) - <strong>TOO LARGE!</strong><br>Maximum: ${maxSizeText}</span>`;
+                        fileInfo.style.display = 'block';
+                    } else {
+                        fileInfo.innerHTML = `File: ${file.name} (${fileSizeText})<br><small style="color: #4caf50;">✓ Within capacity limit (${maxSizeText})</small>`;
+                        fileInfo.style.display = 'block';
+                    }
+                } else {
+                    fileInfo.textContent = `File: ${file.name} (${fileSizeText})`;
+                    fileInfo.style.display = 'block';
+                }
+            } else {
+                fileInfo.style.display = 'none';
+            }
+        });
+
+        // File info display for other file inputs
+        document.querySelectorAll('input[type="file"]').forEach(input => {
+            if (input.id !== 'stego-file') {
+                input.addEventListener('change', function() {
+                    const fileInfo = this.parentElement.querySelector('.file-info');
+                    if (this.files[0]) {
+                        const file = this.files[0];
+                        fileInfo.textContent = `File: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+                        fileInfo.style.display = 'block';
+                    } else {
+                        fileInfo.style.display = 'none';
+                    }
+                });
+            }
         });
     </script>
 </body>
