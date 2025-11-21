@@ -225,20 +225,13 @@
         <!-- Generate Key Pair Tab -->
         <div id="keypair" class="tab-content active">
             <h2>Generate RSA Key Pair</h2>
-            <p style="color: #666; margin-bottom: 20px;">Generate a new RSA public/private key pair for encryption and signing.</p>
-            <button class="btn" onclick="generateKeyPair()">Generate Key Pair</button>
-            <div id="keypair-result" style="display: none;">
-                <div class="form-group">
-                    <label>Public Key:</label>
-                    <textarea id="public-key" readonly></textarea>
-                    <button class="btn btn-secondary" onclick="copyToClipboard('public-key')" style="margin-top: 10px;">Copy Public Key</button>
-                </div>
-                <div class="form-group">
-                    <label>Private Key:</label>
-                    <textarea id="private-key" readonly></textarea>
-                    <button class="btn btn-secondary" onclick="copyToClipboard('private-key')" style="margin-top: 10px;">Copy Private Key</button>
-                </div>
+            <p style="color: #666; margin-bottom: 20px;">Generate a new RSA public/private key pair in PEM format for encryption and signing.</p>
+            <div class="button-group" style="margin-bottom: 20px;">
+                <button class="btn" onclick="generateKeyPair('both')">Generate Both Keys</button>
+                <button class="btn btn-secondary" onclick="generateKeyPair('public')">Generate Public Key Only</button>
+                <button class="btn btn-secondary" onclick="generateKeyPair('private')">Generate Private Key Only</button>
             </div>
+            <div id="keypair-info" class="alert" style="display: none;"></div>
         </div>
 
         <!-- RSA Encrypt Tab -->
@@ -414,20 +407,38 @@
             showAlert('Copied to clipboard!', 'success');
         }
 
-        function generateKeyPair() {
-            fetch(`${API_BASE}/generate-keypair`, {
+        function generateKeyPair(keyType) {
+            let endpoint = `${API_BASE}/generate-keypair`;
+            let filename = 'keypair.pem';
+            
+            if (keyType === 'public') {
+                endpoint = `${API_BASE}/generate-keypair/public`;
+                filename = 'public_key.pem';
+            } else if (keyType === 'private') {
+                endpoint = `${API_BASE}/generate-keypair/private`;
+                filename = 'private_key.pem';
+            }
+            
+            fetch(endpoint, {
                 method: 'POST'
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.publicKey && data.privateKey) {
-                    document.getElementById('public-key').value = data.publicKey;
-                    document.getElementById('private-key').value = data.privateKey;
-                    document.getElementById('keypair-result').style.display = 'block';
-                    showAlert('Key pair generated successfully!', 'success');
-                } else {
-                    showAlert(data.message || 'Error generating key pair', 'error');
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
                 }
+                throw new Error('Failed to generate key pair');
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                const keyTypeText = keyType === 'both' ? 'Key pair' : 
+                                   keyType === 'public' ? 'Public key' : 'Private key';
+                showAlert(`${keyTypeText} generated and downloaded successfully!`, 'success');
             })
             .catch(error => {
                 showAlert('Error: ' + error.message, 'error');

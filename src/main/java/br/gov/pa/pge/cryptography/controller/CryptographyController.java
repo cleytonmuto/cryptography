@@ -1,7 +1,6 @@
 package br.gov.pa.pge.cryptography.controller;
 
 import br.gov.pa.pge.cryptography.dto.HashResponse;
-import br.gov.pa.pge.cryptography.dto.KeyPairResponse;
 import br.gov.pa.pge.cryptography.service.CryptographyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
@@ -23,24 +22,66 @@ public class CryptographyController {
     private CryptographyService cryptographyService;
 
     /**
-     * Generate RSA key pair
+     * Generate RSA key pair - returns both keys in a single file
      */
     @PostMapping("/generate-keypair")
-    public ResponseEntity<KeyPairResponse> generateKeyPair() {
+    public ResponseEntity<Resource> generateKeyPair() {
         try {
             KeyPair keyPair = cryptographyService.generateRSAKeyPair();
-            String publicKey = cryptographyService.publicKeyToString(keyPair.getPublic());
-            String privateKey = cryptographyService.privateKeyToString(keyPair.getPrivate());
+            String publicKeyPEM = cryptographyService.publicKeyToPEM(keyPair.getPublic());
+            String privateKeyPEM = cryptographyService.privateKeyToPEM(keyPair.getPrivate());
             
-            KeyPairResponse response = new KeyPairResponse(
-                publicKey,
-                privateKey,
-                "Key pair generated successfully"
-            );
-            return ResponseEntity.ok(response);
+            // Combine both keys with clear separation
+            String combinedKeys = publicKeyPEM + "\n" + privateKeyPEM;
+            ByteArrayResource resource = new ByteArrayResource(combinedKeys.getBytes());
+            
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"keypair.pem\"")
+                .contentType(MediaType.TEXT_PLAIN)
+                .contentLength(combinedKeys.length())
+                .body(resource);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                .body(new KeyPairResponse(null, null, "Error generating key pair: " + e.getMessage()));
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Generate RSA key pair - public key only
+     */
+    @PostMapping("/generate-keypair/public")
+    public ResponseEntity<Resource> generatePublicKey() {
+        try {
+            KeyPair keyPair = cryptographyService.generateRSAKeyPair();
+            String publicKeyPEM = cryptographyService.publicKeyToPEM(keyPair.getPublic());
+            ByteArrayResource resource = new ByteArrayResource(publicKeyPEM.getBytes());
+            
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"public_key.pem\"")
+                .contentType(MediaType.TEXT_PLAIN)
+                .contentLength(publicKeyPEM.length())
+                .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Generate RSA key pair - private key only
+     */
+    @PostMapping("/generate-keypair/private")
+    public ResponseEntity<Resource> generatePrivateKey() {
+        try {
+            KeyPair keyPair = cryptographyService.generateRSAKeyPair();
+            String privateKeyPEM = cryptographyService.privateKeyToPEM(keyPair.getPrivate());
+            ByteArrayResource resource = new ByteArrayResource(privateKeyPEM.getBytes());
+            
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"private_key.pem\"")
+                .contentType(MediaType.TEXT_PLAIN)
+                .contentLength(privateKeyPEM.length())
+                .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
         }
     }
 

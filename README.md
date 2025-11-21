@@ -6,7 +6,9 @@ A web-based cryptography application providing OpenSSL-based encryption and decr
 
 ### 🔑 RSA Key Pair Generation
 - Generate RSA 2048-bit public/private key pairs
-- Export keys in Base64 format
+- Export keys in PEM format (standard OpenSSL format)
+- Download keys as .pem files
+- Supports generating both keys together or individually
 
 ### 🔐 RSA File Encryption/Decryption
 - Encrypt files using RSA public key encryption
@@ -62,8 +64,10 @@ http://localhost:8080
 ## API Endpoints
 
 ### Generate Key Pair
-- **POST** `/api/crypto/generate-keypair`
-- Returns: JSON with public and private keys
+- **POST** `/api/crypto/generate-keypair` - Returns both keys in one PEM file
+- **POST** `/api/crypto/generate-keypair/public` - Returns public key only
+- **POST** `/api/crypto/generate-keypair/private` - Returns private key only
+- Returns: PEM format file download (.pem)
 
 ### RSA Encryption
 - **POST** `/api/crypto/encrypt/rsa`
@@ -117,8 +121,12 @@ http://localhost:8080
 
 ### 1. Generate Key Pair
 1. Navigate to "Generate Key Pair" tab
-2. Click "Generate Key Pair"
-3. Copy and save your public and private keys securely
+2. Choose one of the options:
+   - **Generate Both Keys**: Downloads a single file with both public and private keys
+   - **Generate Public Key Only**: Downloads only the public key
+   - **Generate Private Key Only**: Downloads only the private key
+3. Keys are downloaded in PEM format (.pem files)
+4. Save your keys securely - especially the private key!
 
 ### 2. Encrypt a File with RSA
 1. Go to "RSA Encrypt" tab
@@ -196,6 +204,8 @@ src/
 ## Notes
 
 - **Keep private keys secure**: Never share your private keys
+- **PEM format**: Keys are generated in standard PEM format, compatible with OpenSSL and most cryptographic tools
+- **Key format**: The application accepts both PEM format (with headers/footers) and raw Base64 keys
 - **Strong passwords**: Use strong, unique passwords for AES encryption
 - **Key backup**: Always backup your keys in a secure location
 - **File compatibility**: Encrypted files are binary and not human-readable

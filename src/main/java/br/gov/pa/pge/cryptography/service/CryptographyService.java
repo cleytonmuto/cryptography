@@ -33,37 +33,80 @@ public class CryptographyService {
     }
 
     /**
-     * Convert PublicKey to Base64 string
+     * Convert PublicKey to PEM format string
      */
-    public String publicKeyToString(PublicKey publicKey) {
-        return Base64.getEncoder().encodeToString(publicKey.getEncoded());
+    public String publicKeyToPEM(PublicKey publicKey) {
+        String base64Key = Base64.getEncoder().encodeToString(publicKey.getEncoded());
+        return formatPEM(base64Key, "PUBLIC KEY");
     }
 
     /**
-     * Convert PrivateKey to Base64 string
+     * Convert PrivateKey to PEM format string
      */
-    public String privateKeyToString(PrivateKey privateKey) {
-        return Base64.getEncoder().encodeToString(privateKey.getEncoded());
+    public String privateKeyToPEM(PrivateKey privateKey) {
+        String base64Key = Base64.getEncoder().encodeToString(privateKey.getEncoded());
+        return formatPEM(base64Key, "PRIVATE KEY");
     }
 
     /**
-     * Convert Base64 string to PublicKey
+     * Format Base64 key as PEM with headers and line breaks
+     */
+    private String formatPEM(String base64Key, String keyType) {
+        StringBuilder pem = new StringBuilder();
+        pem.append("-----BEGIN ").append(keyType).append("-----\n");
+        
+        // Add line breaks every 64 characters
+        for (int i = 0; i < base64Key.length(); i += 64) {
+            int end = Math.min(i + 64, base64Key.length());
+            pem.append(base64Key.substring(i, end));
+            if (end < base64Key.length()) {
+                pem.append("\n");
+            }
+        }
+        
+        pem.append("\n-----END ").append(keyType).append("-----\n");
+        return pem.toString();
+    }
+
+    /**
+     * Convert PEM or Base64 string to PublicKey
      */
     public PublicKey stringToPublicKey(String publicKeyStr) throws Exception {
-        byte[] keyBytes = Base64.getDecoder().decode(publicKeyStr);
+        // Remove PEM headers/footers and whitespace if present
+        String cleanedKey = cleanPEMKey(publicKeyStr, "PUBLIC KEY");
+        byte[] keyBytes = Base64.getDecoder().decode(cleanedKey);
         X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
         KeyFactory keyFactory = KeyFactory.getInstance(RSA_ALGORITHM);
         return keyFactory.generatePublic(spec);
     }
 
     /**
-     * Convert Base64 string to PrivateKey
+     * Convert PEM or Base64 string to PrivateKey
      */
     public PrivateKey stringToPrivateKey(String privateKeyStr) throws Exception {
-        byte[] keyBytes = Base64.getDecoder().decode(privateKeyStr);
+        // Remove PEM headers/footers and whitespace if present
+        String cleanedKey = cleanPEMKey(privateKeyStr, "PRIVATE KEY");
+        byte[] keyBytes = Base64.getDecoder().decode(cleanedKey);
         PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
         KeyFactory keyFactory = KeyFactory.getInstance(RSA_ALGORITHM);
         return keyFactory.generatePrivate(spec);
+    }
+
+    /**
+     * Clean PEM key string by removing headers, footers, and whitespace
+     */
+    private String cleanPEMKey(String keyStr, String keyType) {
+        if (keyStr == null) {
+            return "";
+        }
+        
+        // Remove PEM headers and footers
+        String cleaned = keyStr
+            .replace("-----BEGIN " + keyType + "-----", "")
+            .replace("-----END " + keyType + "-----", "")
+            .replaceAll("\\s", ""); // Remove all whitespace
+        
+        return cleaned;
     }
 
     /**
